@@ -39,9 +39,14 @@ Verdicts: `CONFIRM` (held-out + baseline + ≥3 seeds), `POC` (works but not yet
 ```bash
 python3 organism.py                 # status + health (reflect)
 python3 organism.py recall L1        # everything known about L1
-python3 organism.py --hook-session   # what the SessionStart hook injects
+python3 organism.py agenda           # ACTIVE: ranked next-experiments (info-gain × centrality)
+python3 organism.py anomalies        # rigorous CONFIRM↔FALSIFY tension → candidate new/refined laws
+python3 organism.py --hook-session   # what the SessionStart hook injects (now includes the agenda)
 python3 organism.py --hook-stop .    # self-check + orphan scan
 ```
+
+## Active discovery (the organism proposes, doesn't just record)
+`agenda()` ranks where your *next* experiment should go — heuristic information-gain × law centrality (the spirit of PiEvo's information-directed selection, adapted to a discrete law graph rather than a GP surrogate). It favors **resolving a contradiction** on a load-bearing law, then **promoting a flagship PoC to CONFIRM**, then **gathering** on sparse laws. `anomalies()` is the augmentation arm: a rigorous result that bucks a law's confirmed direction is a real surprise → propose a refinement or a new law. The SessionStart hook injects the top-3 agenda + live anomalies, so every session opens with "what to run next."
 
 ## Why MIXED verdicts are healthy
 A boundary/meta-law accrues both CONFIRM and FALSIFY by design (it marks *where* something holds). `reflect()` flags these for review — that's the immune system working, not an error. Don't "resolve" a boundary law by deleting losses.

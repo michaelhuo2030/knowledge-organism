@@ -105,6 +105,9 @@ def hook_session():
         for e in P[l]: vs[e["verdict"]]=vs.get(e["verdict"],0)+1
         print(f"  {l}: {vs}")
     print("Rule: every experiment `import organism; organism.Kit(name,tests=[law]).emit(...)` or its result is an orphan.")
+    print(""); agenda(top=3)            # ACTIVE: open every session with what to run next
+    an=anomalies()
+    if an: print(f"[organism] {len(an)} live anomaly(ies) → candidate law refinement; see `organism.py anomalies`")
 
 def hook_stop(results_dir="."):
     import glob
@@ -116,6 +119,56 @@ def hook_stop(results_dir="."):
     if rep["review_queue"]: print(f"[organism][REVIEW] mixed-verdict laws: {rep['review_queue']}")
     return {"orphans":orphans,**rep}
 
+# ---- ACTIVE DISCOVERY (PiEvo-inspired) — the organism PROPOSES the next experiment ----
+def _asint(x):
+    try: return int(x)
+    except: return 0
+
+def agenda(top=8):
+    """ACTIVE LOOP — turn the passive evidence graph into a RANKED next-experiment agenda.
+    Heuristic information-gain × law centrality (NOT a GP/BALD surrogate — same spirit adapted to a
+    discrete law graph): spend the next experiment where it most reduces uncertainty on the most
+    load-bearing law. Moves: RESOLVE (mixed), PROMOTE (PoC→CONFIRM), GATHER (sparse), SETTLED (monitor)."""
+    import math
+    ev=_all(); bylaw={}
+    for e in ev: bylaw.setdefault(e["law"],[]).append(e)
+    items=[]
+    for law,g in bylaw.items():
+        v={}
+        for e in g: v[e["verdict"]]=v.get(e["verdict"],0)+1
+        c=v.get("CONFIRM",0); p=v.get("POC",0); f=v.get("FALSIFY",0); n=len(g)
+        rigor_c=sum(1 for e in g if e["verdict"]=="CONFIRM" and e.get("held_out") and _asint(e.get("seeds"))>=3)
+        central=math.log(1+n)
+        if c>0 and f>0:   move="RESOLVE — run a disambiguator isolating where it HOLDS vs BREAKS"; base=1.0
+        elif p>0 and rigor_c==0: move=f"PROMOTE — upgrade flagship PoC to CONFIRM (≥3 seeds+held-out+baseline); {p} PoC, 0 rigorous CONFIRM"; base=0.8
+        elif n<3: move="GATHER — too few nodes; add independent evidence"; base=0.6
+        else: move="SETTLED — monitor; only an edge/stress case adds info"; base=0.2
+        items.append({"law":law,"n":n,"verdicts":v,"move":move,"score":round(base*central,3)})
+    items.sort(key=lambda x:-x["score"])
+    print("=== ORGANISM AGENDA — what to run next (info-gain × centrality) ===")
+    for it in items[:top]:
+        print(f"  [{it['score']:.2f}] {it['law']} (n={it['n']} {it['verdicts']})\n         → {it['move']}")
+    return items
+
+def anomalies():
+    """A RIGOROUS minority verdict (held-out+≥3-seed CONFIRM vs FALSIFY tension) = a real surprise
+    → candidate law REFINEMENT or NEW law. Ignores the PoC mass (only rigorous tension counts)."""
+    ev=_all(); bylaw={}
+    for e in ev: bylaw.setdefault(e["law"],[]).append(e)
+    out=[]
+    print("=== ANOMALIES — rigorous CONFIRM↔FALSIFY tension (candidate new/refined laws) ===")
+    for law,g in bylaw.items():
+        rig=[e for e in g if e.get("held_out") and _asint(e.get("seeds"))>=3 and e["verdict"] in ("CONFIRM","FALSIFY")]
+        pol=set(e["verdict"] for e in rig)
+        if {"CONFIRM","FALSIFY"} <= pol:
+            nc=sum(1 for e in rig if e["verdict"]=="CONFIRM"); nf=len(rig)-nc
+            minor="FALSIFY" if nf<=nc else "CONFIRM"
+            for e in rig:
+                if e["verdict"]==minor:
+                    out.append((law,e)); print(f"  {law}: '{e['experiment']}' is {e['verdict']} vs {nc}C/{nf}F rigorous → {e.get('note','')[:100]}")
+    if not out: print("  (none — organism coherent)")
+    return out
+
 if __name__=="__main__":
     import sys
     a=sys.argv[1:]
@@ -123,4 +176,6 @@ if __name__=="__main__":
     elif a[0]=="--hook-session": hook_session()
     elif a[0]=="--hook-stop": hook_stop(a[1] if len(a)>1 else ".")
     elif a[0]=="recall" and len(a)>1: recall(a[1])
+    elif a[0]=="agenda": agenda()
+    elif a[0]=="anomalies": anomalies()
     else: organism_status()

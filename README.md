@@ -39,3 +39,11 @@ Config via env: `KO_REGISTRY`, `KO_LEDGER`, `KO_ID_RE`. Hooks: see `templates/ho
 - **Laws are executable, not passive** — the gate runs at digestion time, so a violation is caught automatically rather than living in a doc nobody re-reads.
 
 MIT-spirited; share freely.
+
+## Active discovery — the organism proposes the next experiment
+Beyond recording, it *plans*:
+```bash
+python3 organism.py agenda      # ranked next-experiments: info-gain × law centrality
+python3 organism.py anomalies   # rigorous CONFIRM↔FALSIFY tension → candidate new/refined laws
+```
+`agenda()` spends your next experiment where it most reduces uncertainty on the most load-bearing law (resolve a contradiction → promote a flagship PoC to CONFIRM → gather where sparse). `anomalies()` is the augmentation arm — a rigorous result that bucks a law's confirmed direction becomes a candidate refinement or new law. The SessionStart hook injects the top-3 agenda + live anomalies, so every session opens with "what to run next." (PiEvo-inspired — arXiv 2602.06448 — adapted to a discrete law graph; honestly a heuristic, not a GP/BALD surrogate.)
