@@ -1,0 +1,29 @@
+{
+  "_comment": "Merge this `hooks` block into your project's .claude/settings.local.json (keep your existing permissions). Adjust the two absolute paths to your organism.py and your results dir. SessionStart injects laws+health into context; Stop self-checks + flags undigested results. Takes effect next session; manage via /hooks.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /ABS/PATH/TO/organism.py --hook-session 2>/dev/null | jq -Rs '{hookSpecificOutput:{hookEventName:\"SessionStart\",additionalContext:.}}' 2>/dev/null || true",
+            "timeout": 30,
+            "statusMessage": "organism: injecting laws + health"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "out=$(python3 /ABS/PATH/TO/organism.py --hook-stop /ABS/PATH/TO/results 2>/dev/null); echo \"$out\" | grep -qE 'ORPHAN|REVIEW' && echo \"$out\" | jq -Rs '{systemMessage:.}' 2>/dev/null || true",
+            "timeout": 30,
+            "statusMessage": "organism: self-check"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,5 @@
+# a user's own organism state — never commit
+LAWS-EVIDENCE.jsonl
+_organism_*.json
+__pycache__/
+*.pyc
